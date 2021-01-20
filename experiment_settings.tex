@@ -1,0 +1,160 @@
+% Options for packages loaded elsewhere
+\PassOptionsToPackage{unicode}{hyperref}
+\PassOptionsToPackage{hyphens}{url}
+%
+\documentclass[
+]{article}
+\usepackage{lmodern}
+\usepackage{amssymb,amsmath}
+\usepackage{ifxetex,ifluatex}
+\ifnum 0\ifxetex 1\fi\ifluatex 1\fi=0 % if pdftex
+  \usepackage[T1]{fontenc}
+  \usepackage[utf8]{inputenc}
+  \usepackage{textcomp} % provide euro and other symbols
+\else % if luatex or xetex
+  \usepackage{unicode-math}
+  \defaultfontfeatures{Scale=MatchLowercase}
+  \defaultfontfeatures[\rmfamily]{Ligatures=TeX,Scale=1}
+\fi
+% Use upquote if available, for straight quotes in verbatim environments
+\IfFileExists{upquote.sty}{\usepackage{upquote}}{}
+\IfFileExists{microtype.sty}{% use microtype if available
+  \usepackage[]{microtype}
+  \UseMicrotypeSet[protrusion]{basicmath} % disable protrusion for tt fonts
+}{}
+\makeatletter
+\@ifundefined{KOMAClassName}{% if non-KOMA class
+  \IfFileExists{parskip.sty}{%
+    \usepackage{parskip}
+  }{% else
+    \setlength{\parindent}{0pt}
+    \setlength{\parskip}{6pt plus 2pt minus 1pt}}
+}{% if KOMA class
+  \KOMAoptions{parskip=half}}
+\makeatother
+\usepackage{xcolor}
+\IfFileExists{xurl.sty}{\usepackage{xurl}}{} % add URL line breaks if available
+\IfFileExists{bookmark.sty}{\usepackage{bookmark}}{\usepackage{hyperref}}
+\hypersetup{
+  pdftitle={Smoothing in partially observed OU process},
+  pdfauthor={Pierre Gloaguen},
+  hidelinks,
+  pdfcreator={LaTeX via pandoc}}
+\urlstyle{same} % disable monospaced font for URLs
+\usepackage[margin=1in]{geometry}
+\usepackage{graphicx,grffile}
+\makeatletter
+\def\maxwidth{\ifdim\Gin@nat@width>\linewidth\linewidth\else\Gin@nat@width\fi}
+\def\maxheight{\ifdim\Gin@nat@height>\textheight\textheight\else\Gin@nat@height\fi}
+\makeatother
+% Scale images if necessary, so that they will not overflow the page
+% margins by default, and it is still possible to overwrite the defaults
+% using explicit options in \includegraphics[width, height, ...]{}
+\setkeys{Gin}{width=\maxwidth,height=\maxheight,keepaspectratio}
+% Set default figure placement to htbp
+\makeatletter
+\def\fps@figure{htbp}
+\makeatother
+\setlength{\emergencystretch}{3em} % prevent overfull lines
+\providecommand{\tightlist}{%
+  \setlength{\itemsep}{0pt}\setlength{\parskip}{0pt}}
+\setcounter{secnumdepth}{-\maxdimen} % remove section numbering
+
+\title{Smoothing in partially observed OU process}
+\author{Pierre Gloaguen}
+\date{25/11/2020}
+
+\begin{document}
+\maketitle
+
+\hypertarget{true-model}{%
+\section{True model}\label{true-model}}
+
+\begin{align}
+\text{d} X(t) &= -\rho(X(t) - \mu) \text{d}t + \sigma \text{d}W(t),~X(0) = x(0)~t\geq 0\\
+Y(k) &= X(k) + \sigma_{obs}\varepsilon_k,~ \varepsilon_k \overset{i.i.d}{\sim} \mathcal{N}(0, 1)
+\end{align}
+
+\begin{itemize}
+\tightlist
+\item
+  Data are generated according to this true model, giving a vector
+  \(y_{0:T}\) from which inference must be performed.
+\end{itemize}
+
+\hypertarget{biased-model}{%
+\section{Biased model}\label{biased-model}}
+
+We consider a bias version of the true model. This model is biased in
+two ways:
+
+\begin{enumerate}
+\def\labelenumi{\arabic{enumi}.}
+\tightlist
+\item
+  In the dynamics model, which is approximated through an Euler scheme
+  (and setting that \(t_{k + 1} = t_k + \delta\)).
+\item
+  In the observation model, where it is supposed that only a fraction
+  \(\alpha_{obs}\) of \(X(t_k)\) is observed. \begin{align}
+  X(t_k + \delta) &= -\rho(X(t_k) - \mu)\times \delta + \sigma\sqrt{\delta} \times \tilde{\varepsilon}_k, X(0) = x(0), ~k =  0, 1,..., \tilde{\varepsilon}_k \overset{i.i.d}{\sim} \mathcal{N}(0, 1)\\
+  Y(t_k) &= \alpha_{obs}X(t_k) + \sigma_{obs}\varepsilon_k,~k = 0, 1, ..., \varepsilon_k \overset{i.i.d}{\sim} \mathcal{N}(0, 1)
+  \end{align}
+\end{enumerate}
+
+We here emphasize that this scenario is actually quite common, for
+instance in ecology, where the continuous time dynamics model is
+approximated in discrete time, and supposed observation model is subject
+to some bias (we refer the interested reader to the literature of state
+space models for population dynamics).
+
+\hypertarget{smoothing}{%
+\section{Smoothing}\label{smoothing}}
+
+\begin{itemize}
+\item
+  In this context, our goal is to estimate, for each \(n\leq T\) the
+  realization on \(y_{0:n}\) of the random variable:
+  \[\Phi_n = \mathbb{E}\left[\sum_{k = 0}^{n} X(t_k)\vert Y_{0:n}\right].\]
+\item
+  It is known that in this context, the actual marginal distribution is
+  Gaussian with parameters that can be obtained through Kalman
+  recursions. The quantity \(\Phi_n\) can then be computed explicitly.
+\item
+  We consider three alternatives estimation of \(\Phi_n\) which are:
+
+  \begin{itemize}
+  \tightlist
+  \item
+    \emph{PaRIS:} The online estimation is obtained with the PaRIS
+    method. The model used in the recursions is the true one, and the
+    proposal is the optimal filter;
+  \item
+    \emph{Biased PaRIS:} The online estimation is obtained with the
+    PaRIS method. However, here, the model used in the recursions is the
+    biased one, and the proposal is the optimal filter relative to this
+    biased model;
+  \item
+    \emph{Biased Kalman:} The estimation obtained with the Kalman
+    recursions when the true model is replaced by the biased model;
+  \end{itemize}
+\item
+  For each estimator \(\hat{\Phi}_n\), we compute
+\item
+  The scenario is performed with
+  \(T = 100,~\delta = 0.5,~\rho = 1,~\mu = -5,~x(0) = 10,~\sigma = 0.5,~\sigma_{obs} = 0.7,~\alpha_{obs} = 0.95\),
+  using 200 particles for the particle filter, and obtaining two
+  backward samples at each backward sampling step.
+\end{itemize}
+
+\hypertarget{results}{%
+\section{Results}\label{results}}
+
+\begin{center}\includegraphics{plot_results} \end{center}
+
+We can see here that using the biased model (either with Kalman
+recursions or PaRIS), the bias is our estimate only grows linearly with
+\(n\), as expected by results EQREF. In this context, the bias due to
+Monte Carlo error is not visible.
+
+\end{document}

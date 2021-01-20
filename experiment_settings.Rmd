@@ -1,0 +1,96 @@
+---
+title: "Smoothing in partially observed OU process"
+author: "Pierre Gloaguen"
+date: "25/11/2020"
+output: 
+  pdf_document:
+    keep_tex: true
+    dev: cairo_pdf
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+rm(list = ls())
+knitr::opts_chunk$set(echo = FALSE, message = FALSE,
+                      fig.align = "center")
+library(tidyverse)
+```
+
+```{r ggplot_theme, cache = FALSE}
+my_theme <- function(base_size = 8){
+  theme_bw()  %+replace%
+    theme(
+      panel.border = element_rect(colour = "black", 
+                                  fill = rgb(0, 0, 0, 0)),
+      # plot.background = element_rect(fill = "white"),# bg around panel
+      legend.background = element_blank(), 
+      text = element_text(family = "LM Roman 10", size = base_size),
+      axis.title = element_text(size = rel(1)),
+      legend.text = element_text(size = rel(1)),
+      legend.title = element_text(size = rel(1)),
+      axis.text = element_text(size = rel(1)),
+      strip.background = element_rect(fill = "lightgoldenrod1",
+                                      color = "black"),
+      plot.subtitle = element_text(hjust = 0.5, size = rel(1)),
+      plot.title = element_text(face = "bold", size = rel(1.2), hjust = 0.5))
+}
+theme_set(my_theme(base_size = 12))
+```
+
+# True model
+
+\begin{align}
+\text{d} X(t) &= -\rho(X(t) - \mu) \text{d}t + \sigma \text{d}W(t),~X(0) = x(0)~t\geq 0\\
+Y(k) &= X(k) + \sigma_{obs}\varepsilon_k,~ \varepsilon_k \overset{i.i.d}{\sim} \mathcal{N}(0, 1)
+\end{align}
+
+- Data are generated according to this true model, giving a vector $y_{0:T}$ from which inference must be performed.
+
+# Biased model
+
+We consider a bias version of the true model. This model is biased in two ways:
+
+1. In the dynamics model, which is approximated through an Euler scheme (and setting that  $t_{k + 1} = t_k + \delta$). 
+2. In the observation model, where it is supposed that only a fraction $\alpha_{obs}$ of $X(t_k)$ is observed.
+\begin{align}
+X(t_k + \delta) &= -\rho(X(t_k) - \mu)\times \delta + \sigma\sqrt{\delta} \times \tilde{\varepsilon}_k, X(0) = x(0), ~k =  0, 1,..., \tilde{\varepsilon}_k \overset{i.i.d}{\sim} \mathcal{N}(0, 1)\\
+Y(t_k) &= \alpha_{obs}X(t_k) + \sigma_{obs}\varepsilon_k,~k = 0, 1, ..., \varepsilon_k \overset{i.i.d}{\sim} \mathcal{N}(0, 1)
+\end{align}
+
+We here emphasize that this scenario is actually quite common, for instance in ecology, where the continuous time dynamics model is approximated in discrete time, and  supposed observation model is subject to some bias (we refer the interested reader to the literature of state space models for population dynamics).
+
+```{r settings, echo = FALSE}
+library(tidyverse)
+load("experiments_results.RData")
+```
+
+
+# Smoothing
+
+- In this context, our goal is to estimate, for each $n\leq T$ the realization on $y_{0:n}$ of the random variable:
+$$\Phi_n = \mathbb{E}\left[\sum_{k = 0}^{n} X(t_k)\vert Y_{0:n}\right].$$
+
+- It is known that in this context, the actual marginal distribution is Gaussian with parameters that can be obtained through Kalman recursions. The quantity $\Phi_n$ can then be computed explicitly.
+- We consider three alternatives estimation of $\Phi_n$ which are:
+    - *PaRIS:* The online estimation is obtained with the PaRIS method. The model used in the recursions is the true one, and the proposal is the optimal filter;
+    - *Biased PaRIS:* The online estimation is obtained with the PaRIS method. However, here, the model used in the recursions is the biased one, and the proposal is the optimal filter relative to this biased model; 
+    - *Biased Kalman:* The estimation obtained with the Kalman recursions when the true model is replaced by the biased model;
+
+- For each estimator $\hat{\Phi}_n$, we compute
+
+- The scenario is performed with $T = `r n_obs - 1`,~\delta = `r delta`,~\rho = `r rho`,~\mu = `r mu`,~x(0) = `r m1`,~\sigma = `r sigma`,~\sigma_{obs} = `r round(sigma_obs, 1)`,~\alpha_{obs} = `r my_H`$, using 200 particles for the particle filter, and obtaining two backward samples at each backward sampling step.
+
+# Results
+
+```{r plot_results}
+results %>% 
+  ggplot() + 
+  aes(x = obs_index, y = -difference, color = Smoother) +
+  geom_line(aes(group = interaction(Smoother, Replicate)), alpha = .5) +
+  geom_line(data = filter(results, Smoother == "Biased Kalman"), size = 1.5) +
+  geom_hline(yintercept = 0, linetype = 2, color = "red") + 
+  labs(x = "n", y = expression(hat(Phi)[n]~"-"~Phi[n]))
+```
+
+We can see here that using the biased model (either with Kalman recursions or PaRIS), the bias is our estimate only grows linearly with $n$, as expected by results EQREF. In this context, the bias due to Monte Carlo error is not visible.

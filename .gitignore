@@ -1,0 +1,11 @@
+.Rproj.user
+.Rhistory
+.RData
+.Ruserdata
+*.aux
+*.log
+experiment_settings.pdf
+*synctex.gz
+*_files/
+*.RData
+plot_*.pdf
