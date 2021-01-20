@@ -26,7 +26,7 @@ paris <- mclapply(1:30,
                       mutate(method = "PaRIS",
                              difference = Prediction_somme - truth)
                   },
-                  mc.cores = 1) %>% 
+                  mc.cores = parallel::detectCores() - 1) %>% 
   bind_rows(.id = "Replicate")
 biased_paris <- mclapply(1:30, 
                          function(i){
@@ -37,7 +37,7 @@ biased_paris <- mclapply(1:30,
                              mutate(method = "Biased PaRIS",
                                     difference = Prediction_somme - truth)
                          },
-                         mc.cores = detectCores())  %>% 
+                         mc.cores = parallel::detectCores() - 1)  %>% 
   bind_rows(.id = "Replicate")
 # Remove all functions to only keep 
 results <- bind_rows(biased_kalman, paris, biased_paris) %>% 
