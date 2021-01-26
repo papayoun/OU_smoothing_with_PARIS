@@ -13,6 +13,7 @@ editor_options:
 ```{r setup, include=FALSE}
 rm(list = ls())
 knitr::opts_chunk$set(echo = FALSE, message = FALSE,
+                      cache = TRUE,
                       fig.align = "center")
 library(tidyverse)
 ```
@@ -94,3 +95,55 @@ results %>%
 ```
 
 We can see here that using the biased model (either with Kalman recursions or PaRIS), the bias is our estimate only grows linearly with $n$, as expected by results EQREF. In this context, the bias due to Monte Carlo error is not visible.
+
+# The $\mathbf{L}_n$ kernel in hierarchical linear Gaussian model
+
+Suppose we have observations $y_1,\dots, y_n$ recorded at ordered times $\mathbf{T} = (t_1,\dots, t_n)$ which are supposed to be realizations of the following hierarchical linear Gaussian model:
+
+\begin{align}
+X(t + \delta) &= a_\delta X(t) + b_\delta \varepsilon_t \\
+Y(t + \delta) &= c X(t + \delta) + d \epsilon_t,
+\end{align}
+
+where $\left\lbrace \varepsilon_t, \epsilon_t \right\rbrace_{t\in \mathbf{T}}$ is a sequence of mutually independant standard Gaussian random variables.
+
+Following the papers notations, we have that:
+
+\begin{align*}
+q(x_t, x_{t + \delta}) &=\frac{1}{\sqrt{2\pi}b_\delta}\exp\left\lbrace-\frac{1}{2b^2_\delta} \left( x_{t+\delta} - a_\delta x_t \right)^2 \right\rbrace\\
+g(x_{t + \delta}, y_{t + \delta}) &= \frac{1}{\sqrt{2\pi}d} \exp\left\lbrace -\frac{1}{2d^2} \left( y_{t+\delta} - c x_{t + \delta} \right)^2\right\rbrace
+\end{align*}
+
+For this model, we define the unnormalized kernel $\mathbf{L}_n$
+$$\mathsf{X} \times \mathcal{X} \owns (x_{t_n}, A) \mapsto \int_A \ell(x_{t_n}, x_{t_n + \delta}, y_{t_n + \delta}) \text{d} x_{t + \delta}$$
+where $\ell(x_t, x_{t + \delta}, y_{t + \delta}) = q(x_t, x_{t + \delta})g(x_{t + \delta}, y_{t + \delta})$.
+We here note that $\mathbf{L}_n$ is implicitly dependant on $y_{t_n + \delta}$ and on all the model parameters $\theta = \left(a_\delta, b_\delta, c, d \right)$.
+
+By standard conjugation of Gaussian random variables, one can check that we have:
+$$\mathbf{L}_n\mathbf{1}_\mathsf{X}(x_{t_n}) = \frac{\gamma_\delta}{\sqrt{2 \pi}b_\delta d}\exp\left\lbrace -\frac{1}{2}\left(\frac{y^2_{t_n + \delta}}{d^2} + \frac{a_\delta^2x_{t_n}^2}{b_\delta^2}  - \gamma_\delta^2\times \left(\frac{c y_{t_n + \delta}}{d^2} + \frac{a_\delta x_{t_n}}{b_\delta^2} \right)^2 \right)   \right\rbrace, $$
+where 
+$$\gamma^2_\delta = \left(\frac{1}{b_\delta^2 + \frac{c^2}{d^2}} \right)^{-1}$$
+
+And we then have, for any function $h \in \mathsf{F}(\mathcal{X})$:
+$$\mathbf{L}_n h (x_{t_n}) = \mathbf{L}_n\mathbf{1}_\mathsf{X}(x_{t_n}) \times \mathbb{E}\left[h(X)\right],$$
+where 
+$$X \sim \mathcal{N}\left(\gamma^2_\delta \left(\frac{c y_{t_n + \delta}}{d^2} + \frac{a_\delta x_{t_n}}{b_\delta^2} \right); \gamma_\delta^2\right).$$
+
+# Distance between original and skewed model
+
+Suppose that:
+$$
+\text{d} X(t) = -\rho X(t) \text{d}t + \text{d}W(t),~X(0) = x(0),~t\geq 0.
+$$
+Moreover, we suppose this process is observed at times $\mathbf{T} = (0, \delta, \dots, n\delta)$ with a centered error of variance 1. This leads to the following model, that we'll denote $M_\star$
+
+\begin{align}
+X(t + \delta) &=  \overbrace{\text{e}^{-\rho\delta}}^{a_\delta} X(t) + \overbrace{\sqrt{\frac{1}{2\rho}\left(1 - \text{e}^{-2\rho\delta}\right)}}^{b_\delta} \varepsilon_t \\
+Y(t + \delta) &= \underbrace{1}_c \times X(t + \delta) + \underbrace{1}_d \times \epsilon_t,
+\end{align}
+
+Suppose that we would use an Euler scheme (with time step $\delta$) to approximate the transition of the orginal model, suppose, moreover, that the $c$ parameter is misspecified and set to $1 -\nu$^for some $0< \nu < 1$. We therefore have the following skewed model, denoted $M_{\delta, \nu}$:
+\begin{align}
+X(t + \delta) &=  \overbrace{\left(1 - \rho\delta\right)}^{a_\delta} X(t) + \overbrace{\sqrt{\delta}}^{b_\delta} \varepsilon_t \\
+Y(t + \delta) &= \underbrace{\left(1 - \nu\right)}_c \times X(t + \delta) + \underbrace{1}_d \times \epsilon_t,
+\end{align}
