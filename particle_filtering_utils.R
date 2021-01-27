@@ -38,10 +38,68 @@ get_transition_moments <- function(x0_, delta_, method_, obs_ = NULL){
   list(mean = mean, sd = sd)
 }
 
+get_durham_transition_estimate <- function(xF_, x0_, delta_, 
+                                           durhams_params_ = list(epsilon = 1,
+                                                                  M = 100),
+                                           log_ = FALSE){
+  M <- durham_params_$M
+  epsilon <- durhams_params_$epsilon
+  if(is.null(M) | is.null(epsilon)){
+    stop("durhams_params_ argument must be a a list containing the epsilon parameter, AND monte Carlo effort M")
+  }
+  skeleton_size <- round(delta_ / epsilon, 0)
+  if(skeleton_size != (delta_ / epsilon)){
+    epsilon <- delta_ / skeleton_size
+    warning(paste0("epsilon was not a divider of delta_, and was automatically set to ",
+                   epsilon))
+  }
+  if(epsilon >= delta_){
+    # In this case return euler
+    warning("You want to compute Durham-Gallant estimate with an epsilon larger or equal 
+            than delta_. We set epsilon = delta_ and returned euler estimate")
+    moments <- get_transition_moments(x0_, delta_, "euler")
+    return(dnorm(xF_, moments[["mean"]], moments[["sd"]], log = log_))
+  }
+  if(skeleton_size <= 1){
+    stop("MINCE! la taille du squelette est de 1")
+  }
+  if((length(xF_) > 1) | (length(x0_) > 1))
+    stop("So far xF_ and x0_ must be single numeric values")
+  foo <- function(...){
+    skeleton <- rep(NA, skeleton_size + 1)
+    skeleton[1] <- x0_
+    times <- seq(0, delta_, by = epsilon)
+    euler_log_dens <- rep(NA, skeleton_size)
+    for(ell in 1:skeleton_size){
+      frac_time <- epsilon / (delta_ - times[ell])
+      moyenne <- skeleton[ell] + frac_time * (xF_ - skeleton[ell])
+      variance <- frac_time * (delta_ - times[ell + 1])
+      skeleton[ell + 1] <- rnorm(1, moyenne, sqrt(variance))
+      euler_moments <- get_transition_moments(skeleton[ell], epsilon, "euler")
+      euler_log_dens[ell] <- dnorm(skeleton[ell + 1], euler_moments[["mean"]], 
+                              euler_moments[["sd"]], log = TRUE)
+      bb_log_dens[ell] <- dnorm(skeleton[ell + 1],
+                                moyenne, sqrt(variance), log = TRUE)
+    }
+    bb_log_dens[skeleton_size] <- 0
+    
+    skeleton
+  }
+}
+
 get_transition_density <- function(xF_, x0_, delta_, method_, obs_ = NULL,
+                                   durhams_params_ = NULL,
                                    log_ = FALSE){
-  moments <- get_transition_moments(x0_, delta_, method_, obs_)
-  dnorm(xF_, moments[["mean"]], moments[["sd"]], log = log_)
+  if(method_ == "durham"){
+    return(get_durham_transition_estimate(xF_, x0_, delta_, durhams_params_, log_))
+  }
+  else if(stringr::str_detect("ou") | stringr::str_detect("euler")){
+    moments <- get_transition_moments(x0_, delta_, method_, obs_)
+    return(dnorm(xF_, moments[["mean"]], moments[["sd"]], log = log_))
+  }
+  else{
+    stop("Unknown method to compute transition density")
+  }
 }
 
 get_ou_samples <- function(times_, x0_ = m0){
