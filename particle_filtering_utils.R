@@ -21,6 +21,11 @@ get_transition_moments <- function(x0_, delta_, method_, obs_ = NULL){
       mean_dyn <- x0_ - rho * (x0_ - mu) * delta_ # Mean (Euler)
       var_dyn <- sigma^2 * delta_ # Variance (Euler)
     }
+    else if(method_ == "proposal_durham"){
+      # In the case of durham, we choose same proposal as Euler
+      mean_dyn <- x0_ - rho * (x0_ - mu) * delta_ # Mean (Euler)
+      var_dyn <- sigma^2 * delta_ # Variance (Euler)
+    }
     else{
       print(paste0("Your method is ", method_))
       stop("Unknown method")
@@ -34,18 +39,18 @@ get_transition_moments <- function(x0_, delta_, method_, obs_ = NULL){
     sd <- sqrt(var_proposal)
   }
   else
-    stop("Unknown method, must be `ou`, `euler` or `proposal`")
+    stop("Unknown method, must be `ou`, `euler`, `durham` or `proposal`")
   list(mean = mean, sd = sd)
 }
 
 get_durham_transition_estimate <- function(xF_, x0_, delta_, 
-                                           durhams_params_ = list(epsilon = 1,
-                                                                  M = 100),
+                                           durham_params_ = list(epsilon = 1,
+                                                                  M = 30),
                                            log_ = FALSE){
   M <- durham_params_$M
-  epsilon <- durhams_params_$epsilon
+  epsilon <- durham_params_$epsilon
   if(is.null(M) | is.null(epsilon)){
-    stop("durhams_params_ argument must be a a list containing the epsilon parameter, AND monte Carlo effort M")
+    stop("durham_params_ argument must be a a list containing the epsilon parameter, AND monte Carlo effort M")
   }
   skeleton_size <- round(delta_ / epsilon, 0)
   if(skeleton_size != (delta_ / epsilon)){
@@ -69,11 +74,11 @@ get_durham_transition_estimate <- function(xF_, x0_, delta_,
     skeleton <- rep(NA, skeleton_size + 1)
     skeleton[1] <- x0_
     times <- seq(0, delta_, by = epsilon)
-    euler_log_dens <- rep(NA, skeleton_size)
+    euler_log_dens <- bb_log_dens <- rep(NA, skeleton_size)
     for(ell in 1:skeleton_size){
       frac_time <- epsilon / (delta_ - times[ell])
       moyenne <- skeleton[ell] + frac_time * (xF_ - skeleton[ell])
-      variance <- frac_time * (delta_ - times[ell + 1])
+      variance <- frac_time * (delta_ - times[ell + 1]) * sigma^2
       skeleton[ell + 1] <- rnorm(1, moyenne, sqrt(variance))
       euler_moments <- get_transition_moments(skeleton[ell], epsilon, "euler")
       euler_log_dens[ell] <- dnorm(skeleton[ell + 1], euler_moments[["mean"]], 
@@ -82,18 +87,30 @@ get_durham_transition_estimate <- function(xF_, x0_, delta_,
                                 moyenne, sqrt(variance), log = TRUE)
     }
     bb_log_dens[skeleton_size] <- 0
-    
-    skeleton
+    single_estimate <- exp(sum(euler_log_dens) -sum(bb_log_dens))
+    return(single_estimate)
   }
+  require(parallel)
+  estimate <- mclapply(1:M, foo, mc.cores = detectCores() - 1) %>% 
+    unlist() %>% 
+    mean()
+  ifelse(log_, return(log(estimate)), return(estimate))
 }
 
 get_transition_density <- function(xF_, x0_, delta_, method_, obs_ = NULL,
-                                   durhams_params_ = NULL,
+                                   durham_params_ = NULL,
                                    log_ = FALSE){
   if(method_ == "durham"){
-    return(get_durham_transition_estimate(xF_, x0_, delta_, durhams_params_, log_))
+    mapply(FUN = 
+             function(x, y) 
+               get_durham_transition_estimate(x, y, 
+                                              delta_ = delta_, durham_params_ = durham_params_, log_ = log_), 
+           xF_, x0_,
+           SIMPLIFY = TRUE) %>% 
+      return()
   }
-  else if(stringr::str_detect("ou") | stringr::str_detect("euler")){
+  else if(stringr::str_detect(method_, "ou") | stringr::str_detect(method_, "euler") | 
+          stringr::str_detect(method_, "proposal")){
     moments <- get_transition_moments(x0_, delta_, method_, obs_)
     return(dnorm(xF_, moments[["mean"]], moments[["sd"]], log = log_))
   }
@@ -235,7 +252,8 @@ get_initial_proposal_samples <- function(n_, obs_){
 online_paris_smoothing <- function(data_, n_particles, n_backward,
                                    density_method,
                                    obs_H_ = 1,
-                                   smoothing_lag = 1){
+                                   smoothing_lag = 1, 
+                                   durham_params_ = NULL){
   proposal <- paste0("proposal_", density_method)
   observations <- pull(data_, y)
   obs_times <- pull(data_, t)
@@ -272,7 +290,8 @@ online_paris_smoothing <- function(data_, n_particles, n_backward,
     weights_set[, t] <- (get_transition_density(xF_ = new_particles,
                                                 x0_ = selected_particles,
                                                 delta_ = delta_t,
-                                                method = density_method) *
+                                                method = density_method,
+                                                durham_params_ = durham_params_) *
                            dnorm(observations[t], obs_H_ * new_particles, sigma_obs) /
                            get_transition_density(xF_ = new_particles,
                                                   x0_ = selected_particles,
@@ -283,20 +302,29 @@ online_paris_smoothing <- function(data_, n_particles, n_backward,
     particles_set[, t] <- new_particles
     # backward sampling
     for(i in 1:n_particles){
+      print("la")
       sigma_plus <- max(get_transition_density(xF_ = particles_set[i, t],
                                                x0_ = particles_set[, t - 1],
                                                delta_ = delta_t,
-                                               method = density_method))
+                                               method = density_method, 
+                                               durham_params_ = durham_params_))
+      # if(density_method == "durham"){
+      #   # To satisfy the upper bound condition
+      #   sigma_plus <- 1.1 * sigma_plus
+      # }
       for(j in 1:n_backward){
+        print("lo")
         accepted <- FALSE
         while(!accepted){
+          print("li")
           proposed_ancestor <- sample(1:n_particles,
                                       size = 1,
                                       prob = weights_set[,t - 1])
           accept_ratio <- get_transition_density(xF_ = particles_set[i, t],
                                                  x0_ = particles_set[proposed_ancestor, t - 1],
                                                  delta_ = delta_t,
-                                                 method = density_method) / sigma_plus
+                                                 method = density_method,
+                                                 durham_params_ = durham_params_) / sigma_plus
           accepted <- (runif(1) < accept_ratio)
         }
         taus_new[i] <- taus_new[i] + 

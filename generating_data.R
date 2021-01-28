@@ -1,7 +1,7 @@
 mu <- -5; rho <- 1; sigma <- 0.5
 sigma1 <- 1
 m1 <- 10 # Mean of initial state
-delta <- .5
+delta <- 1
 n_obs <- 101
 require(tidyverse)
 set.seed(123)
