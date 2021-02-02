@@ -45,6 +45,8 @@ get_integrand <- function(rho, sigma, delta, c, d, x0, y, method = "ou"){
   gamma2 <- get_gamma2(b, c, d)
   initial_integrand <- sqrt(gamma2) / (b * d * sqrt(2 * pi))
   eterm <- exp(-0.5 * ((y / d)^2 + (a / b * x0)^2 - gamma2 * (a / b^2 * x0 + c / d^2 * y)^2))
+  if(eterm > 1)
+    warning("eterm superieur à 1")
   initial_integrand * eterm
 }
 
@@ -69,3 +71,20 @@ resultats %>%
   aes(x = x0, y = y, fill = diff) +
   geom_raster() +
   scale_fill_viridis_c()
+
+my_alpha <- runif(1)
+my_y <- runif(1, -10, 10)
+foo2 <- function(x, y){
+  dnorm(y, x, 1) - dnorm(y, my_alpha * x, 1)
+}
+foo2_grad <- function(x, y){
+  (y - x) * dnorm(y, x, 1) - my_alpha * (y - my_alpha * x) *dnorm(y, my_alpha * x, 1)
+}
+optimize(function(x) abs(foo2(x, my_y)), c(-10, 10), maximum = TRUE)
+
+tibble(x = seq(-10, 10, length.out = 501), y = my_y, g = dnorm(y, x, 1), geps = dnorm(y, my_alpha * x, 1),
+       diff = abs(foo2(x, y)), grad = foo2_grad(x, y), bound = abs(x *y)) %>% 
+  pivot_longer(-c("x", "y"), names_to = "Fonction", values_to = "Valeur") %>% 
+  ggplot(aes(x = x, y = Valeur, color = Fonction)) +
+    geom_line() + 
+  geom_hline(yintercept = 0)

@@ -147,3 +147,21 @@ Suppose that we would use an Euler scheme (with time step $\delta$) to approxima
 X(t + \delta) &=  \overbrace{\left(1 - \rho\delta\right)}^{a_\delta} X(t) + \overbrace{\sqrt{\delta}}^{b_\delta} \varepsilon_t \\
 Y(t + \delta) &= \underbrace{\left(1 - \nu\right)}_c \times X(t + \delta) + \underbrace{1}_d \times \epsilon_t,
 \end{align}
+
+# 
+
+Consider the following model:
+
+\begin{align}
+X(t + \delta) &= \text{e}^{-\frac{1}{2} \delta} X(t) + \sqrt{1 - \text{e}^{-\delta}} E_t \\
+Y(t + \delta) &= ( 1 - \varepsilon) \times X(t + \delta) + E^{'}_t,
+\end{align}
+
+where $\left\lbrace E_t, E^{'}_t \right\rbrace_{t\in \mathbf{T}}$ is a sequence of mutually independant standard Gaussian random variables, and $\varepsilon \in [0,1]$ is a bias parameter:
+
+Following the paper notations, we have that:
+
+\begin{align*}
+q(x_t, x_{t + \delta}) &=\frac{1}{\sqrt{2\pi\times (1 - \text{e}^{-\delta})}}\exp\left\lbrace-\frac{1}{2(1 - \text{e}^{-\delta})} \left( x_{t+\delta} - \text{e}^{-\frac{1}{2} \delta} x_t \right)^2 \right\rbrace\\
+g(x_{t + \delta}, y_{t + \delta}) &= \frac{1}{\sqrt{2\pi}} \exp\left\lbrace -\frac{1}{2} \left( y_{t+\delta} - (1 - \varepsilon) x_{t + \delta} \right)^2\right\rbrace
+\end{align*}
