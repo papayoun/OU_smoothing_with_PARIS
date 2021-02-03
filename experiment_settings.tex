@@ -1,6 +1,3 @@
-\PassOptionsToPackage{unicode=true}{hyperref} % options for packages loaded elsewhere
-\PassOptionsToPackage{hyphens}{url}
-%
 \documentclass[]{article}
 \usepackage{lmodern}
 \usepackage{amssymb,amsmath}
@@ -9,9 +6,12 @@
 \ifnum 0\ifxetex 1\fi\ifluatex 1\fi=0 % if pdftex
   \usepackage[T1]{fontenc}
   \usepackage[utf8]{inputenc}
-  \usepackage{textcomp} % provides euro and other symbols
 \else % if luatex or xelatex
-  \usepackage{unicode-math}
+  \ifxetex
+    \usepackage{mathspec}
+  \else
+    \usepackage{fontspec}
+  \fi
   \defaultfontfeatures{Ligatures=TeX,Scale=MatchLowercase}
 \fi
 % use upquote if available, for straight quotes in verbatim environments
@@ -21,13 +21,8 @@
 \usepackage[]{microtype}
 \UseMicrotypeSet[protrusion]{basicmath} % disable protrusion for tt fonts
 }{}
-\IfFileExists{parskip.sty}{%
-\usepackage{parskip}
-}{% else
-\setlength{\parindent}{0pt}
-\setlength{\parskip}{6pt plus 2pt minus 1pt}
-}
-\usepackage{hyperref}
+\PassOptionsToPackage{hyphens}{url} % url is loaded by hyperref
+\usepackage[unicode=true]{hyperref}
 \hypersetup{
             pdftitle={Smoothing in partially observed OU process},
             pdfauthor={Pierre Gloaguen},
@@ -44,6 +39,12 @@
 % margins by default, and it is still possible to overwrite the defaults
 % using explicit options in \includegraphics[width, height, ...]{}
 \setkeys{Gin}{width=\maxwidth,height=\maxheight,keepaspectratio}
+\IfFileExists{parskip.sty}{%
+\usepackage{parskip}
+}{% else
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{6pt plus 2pt minus 1pt}
+}
 \setlength{\emergencystretch}{3em}  % prevent overfull lines
 \providecommand{\tightlist}{%
   \setlength{\itemsep}{0pt}\setlength{\parskip}{0pt}}
@@ -71,8 +72,7 @@
 \begin{document}
 \maketitle
 
-\hypertarget{true-model}{%
-\section{True model}\label{true-model}}
+\section{True model}\label{true-model}
 
 \begin{align}
 \text{d} X(t) &= -\rho(X(t) - \mu) \text{d}t + \sigma \text{d}W(t),~X(0) = x(0)~t\geq 0\\
@@ -86,8 +86,7 @@ Y(k) &= X(k) + \sigma_{obs}\varepsilon_k,~ \varepsilon_k \overset{i.i.d}{\sim} \
   \(y_{0:T}\) from which inference must be performed.
 \end{itemize}
 
-\hypertarget{biased-model}{%
-\section{Biased model}\label{biased-model}}
+\section{Biased model}\label{biased-model}
 
 We consider a bias version of the true model. This model is biased in
 two ways:
@@ -100,7 +99,9 @@ two ways:
   (and setting that \(t_{k + 1} = t_k + \delta\)).
 \item
   In the observation model, where it is supposed that only a fraction
-  \(\alpha_{obs}\) of \(X(t_k)\) is observed. \begin{align}
+  \(\alpha_{obs}\) of \(X(t_k)\) is observed.
+
+  \begin{align}
   X(t_k + \delta) &= -\rho(X(t_k) - \mu)\times \delta + \sigma\sqrt{\delta} \times \tilde{\varepsilon}_k, X(0) = x(0), ~k =  0, 1,..., \tilde{\varepsilon}_k \overset{i.i.d}{\sim} \mathcal{N}(0, 1)\\
   Y(t_k) &= \alpha_{obs}X(t_k) + \sigma_{obs}\varepsilon_k,~k = 0, 1, ..., \varepsilon_k \overset{i.i.d}{\sim} \mathcal{N}(0, 1)
   \end{align}
@@ -112,8 +113,7 @@ approximated in discrete time, and supposed observation model is subject
 to some bias (we refer the interested reader to the literature of state
 space models for population dynamics).
 
-\hypertarget{smoothing}{%
-\section{Smoothing}\label{smoothing}}
+\section{Smoothing}\label{smoothing}
 
 \begin{itemize}
 \item
@@ -151,8 +151,7 @@ space models for population dynamics).
   backward samples at each backward sampling step.
 \end{itemize}
 
-\hypertarget{results}{%
-\section{Results}\label{results}}
+\section{Results}\label{results}
 
 \begin{center}\includegraphics{experiment_settings_files/figure-latex/plot_results-1} \end{center}
 
@@ -161,78 +160,8 @@ recursions or PaRIS), the bias is our estimate only grows linearly with
 \(n\), as expected by results EQREF. In this context, the bias due to
 Monte Carlo error is not visible.
 
-\hypertarget{the-mathbfl_n-kernel-in-hierarchical-linear-gaussian-model}{%
-\section{\texorpdfstring{The \(\mathbf{L}_n\) kernel in hierarchical
-linear Gaussian
-model}{The \textbackslash{}mathbf\{L\}\_n kernel in hierarchical linear Gaussian model}}\label{the-mathbfl_n-kernel-in-hierarchical-linear-gaussian-model}}
-
-Suppose we have observations \(y_1,\dots, y_n\) recorded at ordered
-times \(\mathbf{T} = (t_1,\dots, t_n)\) which are supposed to be
-realizations of the following hierarchical linear Gaussian model:
-
-\begin{align}
-X(t + \delta) &= a_\delta X(t) + b_\delta \varepsilon_t \\
-Y(t + \delta) &= c X(t + \delta) + d \epsilon_t,
-\end{align}
-
-where
-\(\left\lbrace \varepsilon_t, \epsilon_t \right\rbrace_{t\in \mathbf{T}}\)
-is a sequence of mutually independant standard Gaussian random
-variables.
-
-Following the papers notations, we have that:
-
-\begin{align*}
-q(x_t, x_{t + \delta}) &=\frac{1}{\sqrt{2\pi}b_\delta}\exp\left\lbrace-\frac{1}{2b^2_\delta} \left( x_{t+\delta} - a_\delta x_t \right)^2 \right\rbrace\\
-g(x_{t + \delta}, y_{t + \delta}) &= \frac{1}{\sqrt{2\pi}d} \exp\left\lbrace -\frac{1}{2d^2} \left( y_{t+\delta} - c x_{t + \delta} \right)^2\right\rbrace
-\end{align*}
-
-For this model, we define the unnormalized kernel \(\mathbf{L}_n\)
-\[\mathsf{X} \times \mathcal{X} \owns (x_{t_n}, A) \mapsto \int_A \ell(x_{t_n}, x_{t_n + \delta}, y_{t_n + \delta}) \text{d} x_{t + \delta}\]
-where
-\(\ell(x_t, x_{t + \delta}, y_{t + \delta}) = q(x_t, x_{t + \delta})g(x_{t + \delta}, y_{t + \delta})\).
-We here note that \(\mathbf{L}_n\) is implicitly dependant on
-\(y_{t_n + \delta}\) and on all the model parameters
-\(\theta = \left(a_\delta, b_\delta, c, d \right)\).
-
-By standard conjugation of Gaussian random variables, one can check that
-we have:
-\[\mathbf{L}_n\mathbf{1}_\mathsf{X}(x_{t_n}) = \frac{\gamma_\delta}{\sqrt{2 \pi}b_\delta d}\exp\left\lbrace -\frac{1}{2}\left(\frac{y^2_{t_n + \delta}}{d^2} + \frac{a_\delta^2x_{t_n}^2}{b_\delta^2}  - \gamma_\delta^2\times \left(\frac{c y_{t_n + \delta}}{d^2} + \frac{a_\delta x_{t_n}}{b_\delta^2} \right)^2 \right)   \right\rbrace, \]
-where
-\[\gamma^2_\delta = \left(\frac{1}{b_\delta^2 + \frac{c^2}{d^2}} \right)^{-1}\]
-
-And we then have, for any function \(h \in \mathsf{F}(\mathcal{X})\):
-\[\mathbf{L}_n h (x_{t_n}) = \mathbf{L}_n\mathbf{1}_\mathsf{X}(x_{t_n}) \times \mathbb{E}\left[h(X)\right],\]
-where
-\[X \sim \mathcal{N}\left(\gamma^2_\delta \left(\frac{c y_{t_n + \delta}}{d^2} + \frac{a_\delta x_{t_n}}{b_\delta^2} \right); \gamma_\delta^2\right).\]
-
-\hypertarget{distance-between-original-and-skewed-model}{%
-\section{Distance between original and skewed
-model}\label{distance-between-original-and-skewed-model}}
-
-Suppose that: \[
-\text{d} X(t) = -\rho X(t) \text{d}t + \text{d}W(t),~X(0) = x(0),~t\geq 0.
-\] Moreover, we suppose this process is observed at times
-\(\mathbf{T} = (0, \delta, \dots, n\delta)\) with a centered error of
-variance 1. This leads to the following model, that we'll denote
-\(M_\star\)
-
-\begin{align}
-X(t + \delta) &=  \overbrace{\text{e}^{-\rho\delta}}^{a_\delta} X(t) + \overbrace{\sqrt{\frac{1}{2\rho}\left(1 - \text{e}^{-2\rho\delta}\right)}}^{b_\delta} \varepsilon_t \\
-Y(t + \delta) &= \underbrace{1}_c \times X(t + \delta) + \underbrace{1}_d \times \epsilon_t,
-\end{align}
-
-Suppose that we would use an Euler scheme (with time step \(\delta\)) to
-approximate the transition of the orginal model, suppose, moreover, that
-the \(c\) parameter is misspecified and set to \(1 -\nu\)\^{}for some
-\(0< \nu < 1\). We therefore have the following skewed model, denoted
-\(M_{\delta, \nu}\): \begin{align}
-X(t + \delta) &=  \overbrace{\left(1 - \rho\delta\right)}^{a_\delta} X(t) + \overbrace{\sqrt{\delta}}^{b_\delta} \varepsilon_t \\
-Y(t + \delta) &= \underbrace{\left(1 - \nu\right)}_c \times X(t + \delta) + \underbrace{1}_d \times \epsilon_t,
-\end{align}
-
-\hypertarget{section}{%
-\section{}\label{section}}
+\section{Bias in the observation
+model}\label{bias-in-the-observation-model}
 
 Consider the following model:
 
@@ -249,7 +178,25 @@ Following the paper notations, we have that:
 
 \begin{align*}
 q(x_t, x_{t + \delta}) &=\frac{1}{\sqrt{2\pi\times (1 - \text{e}^{-\delta})}}\exp\left\lbrace-\frac{1}{2(1 - \text{e}^{-\delta})} \left( x_{t+\delta} - \text{e}^{-\frac{1}{2} \delta} x_t \right)^2 \right\rbrace\\
-g(x_{t + \delta}, y_{t + \delta}) &= \frac{1}{\sqrt{2\pi}} \exp\left\lbrace -\frac{1}{2} \left( y_{t+\delta} - (1 - \varepsilon) x_{t + \delta} \right)^2\right\rbrace
+g(x_{t + \delta}, y_{t + \delta},\varepsilon) &= \frac{1}{\sqrt{2\pi}} \exp\left\lbrace -\frac{1}{2} \left( y_{t+\delta} - (1 - \varepsilon) x_{t + \delta} \right)^2\right\rbrace;
 \end{align*}
+
+One can see that \(g(x_{t + \delta}, y_{t + \delta}, \varepsilon)\) is
+Lipschitz in its \(\varepsilon\) (as its derivative is bounded)
+argument, and morever that :
+\[\left\vert g(x_{t + \delta}, y_{t + \delta},\varepsilon) - g(x_{t + \delta}, y_{t + \delta},0)\right\vert \leq \sup_{0\leq \varepsilon \leq 1} \left\vert\frac{\delta}{\delta \varepsilon} g(x_{t + \delta}, y_{t + \delta},\varepsilon)\right\vert \times \varepsilon
+\leq \overbrace{\left( \left\vert x_{t + \delta}y_{t + \delta} - x^2_{t + \delta} \right\vert + x^2_{t + \delta}\right)}^{:= k(x_{t + \delta}, y_{t + \delta})} \varepsilon.\]
+Therefore, we have that:
+
+\begin{align*}
+\left\vert \mathbf{L}_t^\varepsilon h(x_t) - \mathbf{L}_t h(x_t)  \right\vert &= \left\vert \int q(x_t, x_{t + \delta} )\left( g(x_{t + \delta}, y_{t + \delta},\varepsilon) - g(x_{t + \delta}, y_{t + \delta}, 0)\right) h(x_{t+\delta})\text{d}x_{t + \delta}  \right\vert\\
+&\leq \varepsilon \int q(x_t, x_{t + \delta} ) k(x_{t + \delta},y_{t + \delta}) \vert h(x_{t+\delta})\vert  \text{d} x_{t + \delta}.
+\end{align*}
+
+Therefore, the integral must be uniformly bounded for every
+\(x_\delta\). In the case where
+\(h(x) = x \mathbf{1}_{\vert x \vert \leq M}\), then
+\(k(x, y)\vert h(x) \vert \leq M(2M^2 + M\vert y\vert)\), and we have
+\[\left\vert \mathbf{L}_t^\varepsilon h(x_t) - \mathbf{L}_t h(x_t)  \right\vert \leq M(2M^2 + M\vert y_{t + \delta}\vert)\varepsilon\]
 
 \end{document}
