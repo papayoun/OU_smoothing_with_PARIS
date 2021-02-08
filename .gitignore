@@ -10,3 +10,4 @@ experiment_settings.pdf
 *.RData
 plot_*.pdf
 *_cache/
+*.png

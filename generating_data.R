@@ -1,8 +1,8 @@
-mu <- -5; rho <- 1; sigma <- 0.5
+mu <- 5; rho <- 1; sigma <- 1
 sigma1 <- 1
-m1 <- 10 # Mean of initial state
+m1 <- 0 # Mean of initial state
 delta <- 1
-n_obs <- 101
+n_obs <- 51
 require(tidyverse)
 set.seed(123)
 source("particle_filtering_utils.R")
@@ -14,6 +14,7 @@ sigma_obs <- ou_data %>%
   abs(.) %>% 
   mean() %>% 
   {. * 2} 
+sigma_obs <- 1
 
 ou_data <- ou_data %>% 
   mutate(y = rnorm(n_obs, mean = x, sd = sigma_obs))

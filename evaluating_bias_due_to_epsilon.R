@@ -1,4 +1,5 @@
 rm(list = ls())
+library(parallel)
 source("generating_data.R") # Get true parameters
 source("particle_filtering_utils.R") # Get useful functions
 ou_data <- read.table("ou_data.txt",  header = TRUE, sep = ";")
@@ -6,7 +7,7 @@ ou_data <- read.table("ou_data.txt",  header = TRUE, sep = ";")
 
 n_particles <- 200
 n_backward <- 2
-alphas <- seq(0.5, 1.5, length.out = 41)
+alphas <- seq(0.5, 1, length.out = 11)
 
 truth <- online_kalman_smoothing(ou_data, "ou") %>% 
   pull(Prediction_somme)
@@ -44,17 +45,6 @@ paris <- mclapply(1:30,
                   },
                   mc.cores = parallel::detectCores() - 1) %>% 
   bind_rows(.id = "Replicate")
-biased_paris <- mclapply(1:30, 
-                         function(i){
-                           online_paris_smoothing(data_ = ou_data, n_particles = n_particles, 
-                                                  n_backward = n_backward,
-                                                  obs_H_ = my_H,
-                                                  density_method = "euler")$predictions %>% 
-                             mutate(method = "Biased PaRIS",
-                                    difference = Prediction_somme - truth)
-                         },
-                         mc.cores = parallel::detectCores() - 1)  %>% 
-  bind_rows(.id = "Replicate")
 
 results <- bind_rows(biased_kalman, 
                      mutate(paris, signe_epsilon = ifelse(H > 1, "+", "-")) ) %>% 
@@ -62,11 +52,6 @@ results <- bind_rows(biased_kalman,
                            labels = c("Kalman", "PaRIS"),
                            levels = c("Biased Kalman", "PaRIS"))) %>% 
   select(-method)
-results_epsilon_neg <- results %>% 
-  dplyr::filter(signe_epsilon == "-")
-results_epsilon_neg %>% 
-  ggplot() +
-  aes(x = epsilon, y = abs(difference), color = Smoother) +
-  geom_point(data = dplyr::filter(results_epsilon_neg, Smoother == "PaRIS")) +
-  geom_path(data = dplyr::filter(results_epsilon_neg, Smoother == "Kalman")) +
-  labs(x = expression(epsilon), y = expression("|"~L^epsilon~"-"~L~"|"))
+rm(biased_kalman, biased_paris, paris)
+rm(list = lsf.str())
+save.image("experiments_results_vary_epsilon_fixed_n.RData")
